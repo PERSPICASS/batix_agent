@@ -1,0 +1,62 @@
+name: Deploy PROD
+
+on:
+  push:
+    branches:
+      - prod
+
+jobs:
+  deploy:
+    runs-on: ubuntu-latest
+
+    steps:
+      - name: Deploy via SSH
+        uses: appleboy/ssh-action@v1.0.3
+        with:
+          host: ${{ vars.VPS_HOST }}
+          username: ${{ vars.VPS_USER }}
+          key: ${{ secrets.VPS_SSH_KEY }}
+          port: 22
+          debug: true
+          script: |
+            set -e
+
+            cd /opt/batix/apps/prod/batix_agent
+            C="docker compose -f docker-compose.yml -f docker-compose.prod.yml"
+
+            echo "=== 1. Git update ==="
+            git fetch origin prod
+            git reset --hard origin/prod
+
+            if [ ! -f .env ]; then
+              echo "::error::.env absent dans /opt/batix/apps/prod/batix_agent"
+              exit 1
+            fi
+
+            echo "=== 2. Build (les conteneurs actuels restent en ligne) ==="
+            $C build --no-cache
+
+            echo "=== 3. Infrastructure ==="
+            $C up -d postgres redis
+
+            echo "=== 4. Migrations ==="
+            $C run --rm app php artisan migrate --force
+
+            echo "=== 5. Bascule applicative ==="
+            $C up -d --force-recreate --remove-orphans app nginx queue scheduler
+
+            echo "=== 6. Cache Laravel ==="
+            $C exec -T app php artisan optimize:clear
+            $C exec -T app php artisan optimize
+            $C restart app
+            $C restart nginx queue scheduler
+
+            echo "=== 7. Health check ==="
+            $C exec -T nginx wget -qO- http://127.0.0.1/up >/dev/null
+            $C ps
+
+            echo "=== 8. Docker cleanup ==="
+            docker image prune -af
+            docker builder prune -af
+
+            echo "=== Deploy SUCCESS ==="

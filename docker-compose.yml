@@ -1,0 +1,8 @@
+name: batix_agent
+
+networks:
+  web:
+    external: true
+    name: web
+  agent_internal:
+    driver: bridge
