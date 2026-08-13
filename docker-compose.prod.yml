@@ -9,8 +9,7 @@ services:
     env_file:
       - .env
     volumes:
-      - ./storage:/var/www/html/storage
-      - ./bootstrap/cache:/var/www/html/bootstrap/cache
+      - batix_agent_storage:/var/www/html/storage
     depends_on:
       postgres:
         condition: service_healthy
@@ -51,7 +50,7 @@ services:
       - .env
     command: sh -lc "php artisan queue:work redis --sleep=2 --tries=3 --timeout=120"
     volumes:
-      - ./storage:/var/www/html/storage
+      - batix_agent_storage:/var/www/html/storage
     depends_on:
       postgres:
         condition: service_healthy
@@ -71,7 +70,7 @@ services:
       - .env
     command: sh -lc "while true; do php artisan schedule:run --verbose --no-interaction; sleep 60; done"
     volumes:
-      - ./storage:/var/www/html/storage
+      - batix_agent_storage:/var/www/html/storage
     depends_on:
       postgres:
         condition: service_healthy
@@ -114,6 +113,7 @@ services:
       - agent_internal
 
 volumes:
+  batix_agent_storage:
   batix_agent_pgdata:
   batix_agent_redis:
 
