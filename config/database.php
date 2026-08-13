@@ -8,10 +8,10 @@ return [
         'pgsql' => [
             'driver' => 'pgsql',
             'url' => env('DB_URL'),
-            'host' => env('DB_HOST', 'postgres'),
+            'host' => env('DB_HOST', 'host.docker.internal'),
             'port' => env('DB_PORT', '5432'),
-            'database' => env('DB_DATABASE', 'batix_growth'),
-            'username' => env('DB_USERNAME', 'batix_growth'),
+            'database' => env('DB_DATABASE', 'batix_agent'),
+            'username' => env('DB_USERNAME', 'batix_agent'),
             'password' => env('DB_PASSWORD', ''),
             'charset' => 'utf8',
             'prefix' => '',

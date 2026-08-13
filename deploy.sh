@@ -9,7 +9,7 @@ if [ ! -f .env ]; then
 fi
 
 $C build --pull
-$C up -d postgres redis
+$C up -d redis
 $C run --rm app php artisan migrate --force
 $C up -d --force-recreate --remove-orphans app nginx queue scheduler
 $C exec -T app php artisan optimize:clear

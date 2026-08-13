@@ -8,11 +8,11 @@ services:
     working_dir: /var/www/html
     env_file:
       - .env
+    extra_hosts:
+      - "host.docker.internal:host-gateway"
     volumes:
       - batix_agent_storage:/var/www/html/storage
     depends_on:
-      postgres:
-        condition: service_healthy
       redis:
         condition: service_healthy
     networks:
@@ -48,12 +48,12 @@ services:
     working_dir: /var/www/html
     env_file:
       - .env
+    extra_hosts:
+      - "host.docker.internal:host-gateway"
     command: sh -lc "php artisan queue:work redis --sleep=2 --tries=3 --timeout=120"
     volumes:
       - batix_agent_storage:/var/www/html/storage
     depends_on:
-      postgres:
-        condition: service_healthy
       redis:
         condition: service_healthy
     networks:
@@ -68,32 +68,14 @@ services:
     working_dir: /var/www/html
     env_file:
       - .env
+    extra_hosts:
+      - "host.docker.internal:host-gateway"
     command: sh -lc "while true; do php artisan schedule:run --verbose --no-interaction; sleep 60; done"
     volumes:
       - batix_agent_storage:/var/www/html/storage
     depends_on:
-      postgres:
-        condition: service_healthy
       redis:
         condition: service_healthy
-    networks:
-      - agent_internal
-
-  postgres:
-    image: postgres:17-alpine
-    container_name: batix_agent_db
-    restart: unless-stopped
-    environment:
-      POSTGRES_DB: ${DB_DATABASE}
-      POSTGRES_USER: ${DB_USERNAME}
-      POSTGRES_PASSWORD: ${DB_PASSWORD}
-    volumes:
-      - batix_agent_pgdata:/var/lib/postgresql/data
-    healthcheck:
-      test: ["CMD-SHELL", "pg_isready -U ${DB_USERNAME} -d ${DB_DATABASE}"]
-      interval: 5s
-      timeout: 5s
-      retries: 10
     networks:
       - agent_internal
 
@@ -114,7 +96,6 @@ services:
 
 volumes:
   batix_agent_storage:
-  batix_agent_pgdata:
   batix_agent_redis:
 
 networks:

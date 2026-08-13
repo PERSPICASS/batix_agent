@@ -2,69 +2,51 @@
 
 Agent marketing digital autonome pour BatixPro.
 
-Le projet est volontairement séparé de `batix_Saas` : il possède son propre runtime Docker, sa base PostgreSQL, Redis, son worker et son scheduler. Les futures intégrations avec BatixPro, Meta/Facebook et WhatsApp passent par API/webhooks et non par une dépendance UI dans BatixPro.
+Le projet est séparé de `batix_Saas`. PostgreSQL est installé directement sur le VPS ; il n'est pas lancé dans Docker pour `batix_agent`. Redis, Laravel, Nginx, le worker et le scheduler restent conteneurisés.
 
-## MVP actuel
+## Architecture production
 
-- campagnes marketing ;
-- génération IA de 3 contenus complémentaires : post, script Reel et publicité ;
-- validation/rejet manuel des contenus ;
-- prospects et provenance des leads ;
-- scoring IA sur 100 ;
-- prochaine action commerciale suggérée ;
-- script WhatsApp proposé ;
-- aucune publication Meta ni aucun envoi WhatsApp automatique à ce stade.
-
-## Architecture Docker production
-
+- PostgreSQL : service du VPS ;
 - `app` : Laravel / PHP-FPM ;
-- `nginx` : exposition via le réseau Traefik externe `web` ;
+- `nginx` : exposition via Traefik ;
 - `queue` : Laravel queue worker ;
-- `scheduler` : `schedule:run` toutes les minutes ;
-- `postgres` : base dédiée ;
-- `redis` : cache et queues dédiés.
+- `scheduler` : tâches planifiées ;
+- `redis` : cache et queues dans Docker.
 
-La structure de déploiement reprend le principe de `PERSPICASS/batix_Saas` : `docker-compose.yml` + `docker-compose.prod.yml`, branche `prod`, déploiement SSH sur le VPS.
+Les services PHP utilisent `host.docker.internal:host-gateway` pour joindre PostgreSQL sur l'hôte Linux.
+
+## Configuration base de données
+
+Le `.env` de production doit utiliser :
+
+```env
+DB_CONNECTION=pgsql
+DB_HOST=host.docker.internal
+DB_PORT=5432
+DB_DATABASE=batix_agent
+DB_USERNAME=batix_agent
+DB_PASSWORD=CHANGE_ME_DB_PASSWORD
+DB_SSLMODE=disable
+```
+
+Créer sur PostgreSQL du VPS une base et un rôle dédiés `batix_agent`. PostgreSQL doit accepter les connexions provenant du subnet Docker du réseau `batix_agent_agent_internal` via `pg_hba.conf`, sans exposer le port 5432 publiquement.
+
+Pour connaître le subnet après création du réseau :
+
+```bash
+docker network inspect batix_agent_agent_internal --format '{{(index .IPAM.Config 0).Subnet}}'
+```
 
 ## Installation VPS
 
 Répertoire attendu :
 
-```bash
+```text
 /opt/batix/apps/prod/batix_agent
 ```
 
-Première installation :
+Le déploiement utilise `docker-compose.yml` + `docker-compose.prod.yml` et la branche `prod`, sur le même principe que `PERSPICASS/batix_Saas`.
 
-```bash
-git clone git@github.com:PERSPICASS/batix_agent.git /opt/batix/apps/prod/batix_agent
-cd /opt/batix/apps/prod/batix_agent
-git checkout prod
-cp .env.example .env
-nano .env
-```
+Le workflow GitHub Actions attend `VPS_HOST`, `VPS_USER` et `VPS_SSH_KEY`.
 
-Générer une clé Laravel :
-
-```bash
-docker compose -f docker-compose.yml -f docker-compose.prod.yml build app
-docker compose -f docker-compose.yml -f docker-compose.prod.yml run --rm app php artisan key:generate --show
-```
-
-Reporter la valeur obtenue dans `APP_KEY` du `.env`, puis :
-
-```bash
-./deploy.sh
-```
-
-## Variables GitHub Actions
-
-Le workflow `.github/workflows/deploy.yml` attend :
-
-- variable `VPS_HOST` ;
-- variable `VPS_USER` ;
-- secret `VPS_SSH_KEY`.
-
-## Variables sensibles
-
-Ne jamais commiter `.env`. Les secrets OpenAI, Meta, WhatsApp, base de données et Basic Auth restent uniquement sur le VPS / dans les secrets GitHub nécessaires.
+Ne jamais commiter `.env` ni les secrets OpenAI, Meta, WhatsApp ou PostgreSQL.
