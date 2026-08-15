@@ -22,6 +22,7 @@ return Application::configure(basePath: dirname(__DIR__))
             AddLinkHeadersForPreloadedAssets::class,
         ]);
         $middleware->trustProxies(at: ['*']);
+        $middleware->validateCsrfTokens(except: ['webhooks/whatsapp']);
         $middleware->alias(['growth.auth' => GrowthAdminAuth::class]);
     })
     ->withExceptions(function (Exceptions $exceptions): void {

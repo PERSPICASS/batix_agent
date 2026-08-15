@@ -3,10 +3,14 @@
 use App\Http\Controllers\AdminUserController;
 use App\Http\Controllers\GrowthController;
 use App\Http\Controllers\GrowthLoginController;
+use App\Http\Controllers\WhatsAppMessageController;
+use App\Http\Controllers\WhatsAppWebhookController;
 use Illuminate\Support\Facades\Route;
 
 Route::get('/login', [GrowthLoginController::class, 'create'])->name('growth.login');
 Route::post('/login', [GrowthLoginController::class, 'store'])->name('growth.login.store');
+Route::get('/webhooks/whatsapp', [WhatsAppWebhookController::class, 'verify'])->name('whatsapp.webhook.verify');
+Route::post('/webhooks/whatsapp', [WhatsAppWebhookController::class, 'receive'])->name('whatsapp.webhook.receive');
 
 Route::middleware('growth.auth')->group(function () {
     Route::get('/', [GrowthController::class, 'index'])->name('growth.index');
@@ -22,6 +26,7 @@ Route::middleware('growth.auth')->group(function () {
     Route::post('/leads/{lead}/score', [GrowthController::class, 'score'])->name('leads.score');
     Route::patch('/leads/{lead}/status', [GrowthController::class, 'updateLeadStatus'])->name('leads.status');
     Route::post('/leads/{lead}/interactions', [GrowthController::class, 'storeLeadInteraction'])->name('leads.interactions.store');
+    Route::post('/leads/{lead}/whatsapp', [WhatsAppMessageController::class, 'store'])->name('leads.whatsapp.store');
     Route::patch('/contents/{content}/status', [GrowthController::class, 'updateContentStatus'])->name('contents.status');
     Route::post('/admins', [AdminUserController::class, 'store'])->name('admins.store');
     Route::patch('/admins/{admin}', [AdminUserController::class, 'update'])->name('admins.update');

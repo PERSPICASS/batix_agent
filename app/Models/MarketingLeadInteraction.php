@@ -7,9 +7,9 @@ use Illuminate\Database\Eloquent\Relations\BelongsTo;
 
 class MarketingLeadInteraction extends Model
 {
-    protected $fillable = ['marketing_lead_id', 'admin_user_id', 'type', 'body', 'occurred_at'];
+    protected $fillable = ['marketing_lead_id', 'admin_user_id', 'type', 'direction', 'external_id', 'body', 'meta', 'occurred_at'];
 
-    protected $casts = ['occurred_at' => 'datetime'];
+    protected $casts = ['occurred_at' => 'datetime', 'meta' => 'array'];
 
     public function lead(): BelongsTo
     {

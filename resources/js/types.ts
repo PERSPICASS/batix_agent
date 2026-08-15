@@ -55,6 +55,7 @@ export type Lead = {
 export type LeadInteraction = {
     id: number;
     type: 'note' | 'call' | 'whatsapp' | 'email';
+    direction?: 'internal' | 'inbound' | 'outbound';
     body: string;
     occurred_at: string;
     author?: { id: number; name: string } | null;
@@ -72,5 +73,6 @@ export type AdminUser = {
 export type SharedProps = {
     flash?: { success?: string | null; error?: string | null };
     aiConfigured?: boolean;
+    whatsappConfigured?: boolean;
     [key: string]: unknown;
 };

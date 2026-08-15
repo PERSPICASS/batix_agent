@@ -22,10 +22,13 @@ const scoreLabel = (status?: Lead['scoring_status']) => {
 export default function Leads({ leads, campaigns, status }: Props) {
     const { props } = usePage<SharedProps>();
     const aiConfigured = Boolean(props.aiConfigured);
+    const whatsappConfigured = Boolean(props.whatsappConfigured);
     const [scoringId, setScoringId] = useState<number | null>(null);
     const [copied, setCopied] = useState<number | null>(null);
     const [interactionBodies, setInteractionBodies] = useState<Record<number, string>>({});
     const [interactionTypes, setInteractionTypes] = useState<Record<number, string>>({});
+    const [whatsappBodies, setWhatsappBodies] = useState<Record<number, string>>({});
+    const [sendingWhatsAppId, setSendingWhatsAppId] = useState<number | null>(null);
     const form = useForm({ name: '', phone: '', company: '', business_type: '', source: 'whatsapp', marketing_campaign_id: '', notes: '' });
     const hasRunningScore = leads.some((lead) => isProcessing(lead.scoring_status));
 
@@ -55,6 +58,17 @@ export default function Leads({ leads, campaigns, status }: Props) {
             onSuccess: () => setInteractionBodies((bodies) => ({ ...bodies, [lead.id]: '' })),
         });
     };
+    const sendWhatsApp = (lead: Lead) => {
+        const body = (whatsappBodies[lead.id] ?? lead.whatsapp_script ?? '').trim();
+        if (!body || !whatsappConfigured) return;
+
+        setSendingWhatsAppId(lead.id);
+        router.post(`/leads/${lead.id}/whatsapp`, { body }, {
+            preserveScroll: true,
+            onSuccess: () => setWhatsappBodies((bodies) => ({ ...bodies, [lead.id]: '' })),
+            onFinish: () => setSendingWhatsAppId(null),
+        });
+    };
     const copy = async (lead: Lead) => {
         if (!lead.whatsapp_script) return;
 
@@ -64,7 +78,7 @@ export default function Leads({ leads, campaigns, status }: Props) {
     };
 
     return (
-        <AppLayout title="Prospects" subtitle="Centralise les leads, laisse l’IA prioriser les opportunités, puis utilise les recommandations pour préparer la prise de contact." actions={<div className={`rounded-full border px-3 py-2 text-xs font-bold ${aiConfigured ? 'border-emerald-800 text-emerald-300' : 'border-amber-800 text-amber-300'}`}>{aiConfigured ? 'Scoring IA actif' : 'IA non configurée'}</div>}>
+        <AppLayout title="Prospects" subtitle="Centralise les leads, laisse l’IA prioriser les opportunités, puis utilise les recommandations pour préparer la prise de contact." actions={<div className="flex gap-2"><div className={`rounded-full border px-3 py-2 text-xs font-bold ${aiConfigured ? 'border-emerald-800 text-emerald-300' : 'border-amber-800 text-amber-300'}`}>{aiConfigured ? 'Scoring IA actif' : 'IA non configurée'}</div><div className={`rounded-full border px-3 py-2 text-xs font-bold ${whatsappConfigured ? 'border-emerald-800 text-emerald-300' : 'border-slate-700 text-slate-400'}`}>{whatsappConfigured ? 'WhatsApp connecté' : 'WhatsApp à configurer'}</div></div>}>
             <Head title="Prospects" />
             <div className="mb-5 flex gap-2 overflow-x-auto pb-1">{leadFilters.map(([value, label]) => <Link key={value} href={value ? `/leads?status=${value}` : '/leads'} className={`whitespace-nowrap rounded-xl px-3.5 py-2 text-xs font-bold ${status === value ? 'bg-amber-400 text-slate-950' : 'border border-slate-800 bg-slate-900 text-slate-400 hover:text-white'}`}>{label}</Link>)}</div>
             <div className="grid gap-6 xl:grid-cols-[380px_1fr]">
@@ -95,9 +109,10 @@ export default function Leads({ leads, campaigns, status }: Props) {
                             {lead.scoring_attempts ? <p className="mt-2 text-xs text-slate-500">{lead.scoring_attempts} tentative{lead.scoring_attempts > 1 ? 's' : ''}</p> : null}
                             {lead.scoring_error && <p className="mt-2 text-xs text-red-300">{lead.scoring_error}</p>}
                             {lead.notes && <p className="mt-4 text-sm leading-6 text-slate-400">{lead.notes}</p>}
-                            <section className="mt-5 border-t border-slate-800 pt-4"><div className="mb-3 flex items-center gap-2 text-xs font-black uppercase tracking-wider text-slate-400"><History size={15}/>Journal commercial</div><div className="space-y-2">{lead.interactions?.slice(0, 5).map((interaction) => <div key={interaction.id} className="rounded-xl border border-slate-800 bg-slate-950/60 p-3"><div className="flex justify-between gap-3 text-[10px] font-bold uppercase tracking-wide text-slate-500"><span>{interaction.type} · {interaction.author?.name || 'Système'}</span><span>{new Date(interaction.occurred_at).toLocaleString('fr-FR')}</span></div><p className="mt-2 whitespace-pre-wrap text-sm leading-5 text-slate-300">{interaction.body}</p></div>)}{!lead.interactions?.length && <p className="text-sm text-slate-500">Aucune interaction enregistrée.</p>}</div><div className="mt-3 flex flex-col gap-2 sm:flex-row"><select className="field mt-0 w-auto" value={interactionTypes[lead.id] || 'note'} onChange={(event) => setInteractionTypes((types) => ({ ...types, [lead.id]: event.target.value }))}>{['note', 'call', 'whatsapp', 'email'].map((type) => <option key={type}>{type}</option>)}</select><input className="field mt-0 flex-1" value={interactionBodies[lead.id] || ''} onChange={(event) => setInteractionBodies((bodies) => ({ ...bodies, [lead.id]: event.target.value }))} placeholder="Ajouter une note ou le résumé d’un échange…" onKeyDown={(event) => { if (event.key === 'Enter') { event.preventDefault(); addInteraction(lead); } }}/><button className="btn-secondary shrink-0" onClick={() => addInteraction(lead)} disabled={!interactionBodies[lead.id]?.trim()}><Plus size={16}/>Ajouter</button></div></section>
+                            <section className="mt-5 border-t border-slate-800 pt-4"><div className="mb-3 flex items-center gap-2 text-xs font-black uppercase tracking-wider text-slate-400"><History size={15}/>Journal commercial</div><div className="space-y-2">{lead.interactions?.slice(0, 5).map((interaction) => <div key={interaction.id} className="rounded-xl border border-slate-800 bg-slate-950/60 p-3"><div className="flex justify-between gap-3 text-[10px] font-bold uppercase tracking-wide text-slate-500"><span>{interaction.type}{interaction.direction && interaction.direction !== 'internal' ? ` · ${interaction.direction === 'inbound' ? 'entrant' : 'sortant'}` : ''} · {interaction.author?.name || 'Système'}</span><span>{new Date(interaction.occurred_at).toLocaleString('fr-FR')}</span></div><p className="mt-2 whitespace-pre-wrap text-sm leading-5 text-slate-300">{interaction.body}</p></div>)}{!lead.interactions?.length && <p className="text-sm text-slate-500">Aucune interaction enregistrée.</p>}</div><div className="mt-3 flex flex-col gap-2 sm:flex-row"><select className="field mt-0 w-auto" value={interactionTypes[lead.id] || 'note'} onChange={(event) => setInteractionTypes((types) => ({ ...types, [lead.id]: event.target.value }))}>{['note', 'call', 'whatsapp', 'email'].map((type) => <option key={type}>{type}</option>)}</select><input className="field mt-0 flex-1" value={interactionBodies[lead.id] || ''} onChange={(event) => setInteractionBodies((bodies) => ({ ...bodies, [lead.id]: event.target.value }))} placeholder="Ajouter une note ou le résumé d’un échange…" onKeyDown={(event) => { if (event.key === 'Enter') { event.preventDefault(); addInteraction(lead); } }}/><button className="btn-secondary shrink-0" onClick={() => addInteraction(lead)} disabled={!interactionBodies[lead.id]?.trim()}><Plus size={16}/>Ajouter</button></div></section>
                             {lead.ai_summary && <div className="mt-4 grid gap-3 md:grid-cols-2"><div className="rounded-xl border border-slate-800 bg-slate-950/60 p-4"><div className="mb-2 text-[10px] font-black uppercase tracking-wider text-slate-500">Analyse IA</div><p className="text-sm leading-6 text-slate-300">{lead.ai_summary}</p></div><div className="rounded-xl border border-amber-500/20 bg-amber-500/5 p-4"><div className="mb-2 text-[10px] font-black uppercase tracking-wider text-amber-300">Prochaine action</div><p className="text-sm leading-6 text-amber-50">{lead.ai_next_action}</p></div></div>}
                             {lead.whatsapp_script && <div className="mt-3 rounded-xl border border-emerald-800/40 bg-emerald-950/30 p-4"><div className="mb-2 flex items-center justify-between"><div className="flex items-center gap-2 text-xs font-black uppercase tracking-wider text-emerald-300"><MessageCircleMore size={15}/>Message WhatsApp proposé</div><button onClick={() => copy(lead)} className="inline-flex items-center gap-1 text-xs font-bold text-emerald-300"><Copy size={13}/>{copied === lead.id ? 'Copié' : 'Copier'}</button></div><p className="whitespace-pre-wrap text-sm leading-6 text-slate-300">{lead.whatsapp_script}</p></div>}
+                            <section className="mt-3 rounded-xl border border-emerald-800/40 bg-emerald-950/20 p-4"><div className="mb-2 flex items-center gap-2 text-xs font-black uppercase tracking-wider text-emerald-300"><MessageCircleMore size={15}/>Envoyer via WhatsApp</div><textarea className="field min-h-24" value={whatsappBodies[lead.id] ?? lead.whatsapp_script ?? ''} onChange={(event) => setWhatsappBodies((bodies) => ({ ...bodies, [lead.id]: event.target.value }))} placeholder="Rédigez un message pour ce prospect…" disabled={!whatsappConfigured}/><button className="btn-primary mt-3" disabled={!whatsappConfigured || sendingWhatsAppId === lead.id || !(whatsappBodies[lead.id] ?? lead.whatsapp_script ?? '').trim()} onClick={() => sendWhatsApp(lead)}>{sendingWhatsAppId === lead.id && <Loader2 size={16} className="animate-spin"/>}{whatsappConfigured ? 'Envoyer le message' : 'WhatsApp non configuré'}</button></section>
                         </article>;
                     })}
                     {leads.length === 0 && <div className="panel p-12 text-center text-sm text-slate-500">Aucun prospect enregistré.</div>}

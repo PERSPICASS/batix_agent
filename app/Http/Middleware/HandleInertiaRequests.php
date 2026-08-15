@@ -2,6 +2,7 @@
 
 namespace App\Http\Middleware;
 
+use App\Services\WhatsAppCloudService;
 use Illuminate\Http\Request;
 use Inertia\Middleware;
 
@@ -19,6 +20,7 @@ class HandleInertiaRequests extends Middleware
         return [
             ...parent::share($request),
             'aiConfigured' => fn () => (bool) config('services.openai.api_key'),
+            'whatsappConfigured' => fn () => app(WhatsAppCloudService::class)->configured(),
             'flash' => [
                 'success' => fn () => $request->session()->get('success'),
                 'error' => fn () => $request->session()->get('error'),

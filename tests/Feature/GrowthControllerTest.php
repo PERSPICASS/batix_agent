@@ -12,6 +12,7 @@ use App\Services\BatixGrowthAiService;
 use App\Support\GrowthOptions;
 use Illuminate\Foundation\Testing\RefreshDatabase;
 use Illuminate\Support\Facades\Hash;
+use Illuminate\Support\Facades\Http;
 use Illuminate\Support\Facades\Queue;
 use Mockery;
 use RuntimeException;
@@ -174,6 +175,85 @@ class GrowthControllerTest extends TestCase
             'admin_user_id' => $admin->id,
             'type' => 'whatsapp',
             'body' => 'Le prospect souhaite une démonstration mardi.',
+        ]);
+    }
+
+    public function test_an_administrator_can_send_a_whatsapp_message(): void
+    {
+        config([
+            'services.whatsapp.graph_version' => 'v21.0',
+            'services.whatsapp.phone_number_id' => '123456',
+            'services.whatsapp.access_token' => 'test-token',
+        ]);
+        Http::fake([
+            'https://graph.facebook.com/v21.0/123456/messages' => Http::response([
+                'messages' => [['id' => 'wamid.outbound']],
+                'contacts' => [['wa_id' => '2250102030405']],
+            ], 200),
+        ]);
+        $lead = MarketingLead::factory()->create(['phone' => '+225 01 02 03 04 05']);
+
+        $this->authenticatedRequest()->post("/leads/{$lead->id}/whatsapp", [
+            'body' => 'Bonjour, pouvons-nous organiser une démonstration ?',
+        ])->assertRedirect();
+
+        Http::assertSent(fn ($request) => $request->url() === 'https://graph.facebook.com/v21.0/123456/messages'
+            && $request['to'] === '2250102030405'
+            && $request['text']['body'] === 'Bonjour, pouvons-nous organiser une démonstration ?');
+        $this->assertDatabaseHas('marketing_lead_interactions', [
+            'marketing_lead_id' => $lead->id,
+            'type' => 'whatsapp',
+            'direction' => 'outbound',
+            'external_id' => 'wamid.outbound',
+        ]);
+    }
+
+    public function test_whatsapp_webhook_verification_returns_the_challenge(): void
+    {
+        config(['services.meta.verify_token' => 'verification-token']);
+
+        $this->get('/webhooks/whatsapp?hub.mode=subscribe&hub.verify_token=verification-token&hub.challenge=challenge-value')
+            ->assertOk()
+            ->assertSeeText('challenge-value');
+    }
+
+    public function test_an_inbound_whatsapp_webhook_creates_a_lead_and_interaction(): void
+    {
+        config(['services.meta.app_secret' => 'meta-app-secret']);
+        $payload = [
+            'entry' => [[
+                'changes' => [[
+                    'value' => [
+                        'contacts' => [['wa_id' => '2250102030405', 'profile' => ['name' => 'Awa Koné']]],
+                        'messages' => [[
+                            'id' => 'wamid.inbound',
+                            'from' => '2250102030405',
+                            'timestamp' => (string) now()->timestamp,
+                            'type' => 'text',
+                            'text' => ['body' => 'Bonjour, je souhaite une démonstration.'],
+                        ]],
+                    ],
+                ]],
+            ]],
+        ];
+        $content = json_encode($payload, JSON_THROW_ON_ERROR);
+        $signature = 'sha256='.hash_hmac('sha256', $content, 'meta-app-secret');
+
+        $this->call('POST', '/webhooks/whatsapp', [], [], [], [
+            'CONTENT_TYPE' => 'application/json',
+            'HTTP_X_HUB_SIGNATURE_256' => $signature,
+        ], $content)->assertOk();
+
+        $this->assertDatabaseHas('marketing_leads', [
+            'name' => 'Awa Koné',
+            'phone' => '+2250102030405',
+            'source' => 'whatsapp',
+        ]);
+        $this->assertDatabaseHas('marketing_lead_interactions', [
+            'external_id' => 'wamid.inbound',
+            'type' => 'whatsapp',
+            'direction' => 'inbound',
+            'body' => 'Bonjour, je souhaite une démonstration.',
         ]);
     }
 

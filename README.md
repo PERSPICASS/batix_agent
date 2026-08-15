@@ -61,6 +61,22 @@ php artisan growth:admin admin --name="Administrateur"
 
 La commande demande le mot de passe de façon masquée. Vous pouvez la relancer à tout moment pour modifier le mot de passe ou réactiver le compte.
 
+## Raccordement WhatsApp Cloud API
+
+Le tableau des prospects peut envoyer un message WhatsApp et importer les réponses reçues dans le journal commercial. Configurez les variables suivantes dans le `.env` du serveur :
+
+```env
+META_APP_SECRET=...
+META_WEBHOOK_VERIFY_TOKEN=choisissez-une-valeur-secrete
+WHATSAPP_GRAPH_VERSION=v21.0
+WHATSAPP_PHONE_NUMBER_ID=...
+WHATSAPP_ACCESS_TOKEN=...
+```
+
+Dans la configuration Webhooks de l’application Meta, utilisez l’URL publique `https://votre-domaine/webhooks/whatsapp` et la même valeur de vérification. Le serveur valide les requêtes entrantes avec `META_APP_SECRET`, crée un prospect pour un nouveau numéro et évite les doublons de messages via leur identifiant externe.
+
+Une fois ces valeurs renseignées et la configuration rechargée, l’interface affiche « WhatsApp connecté » et propose l’envoi depuis chaque fiche prospect.
+
 ## Développement local
 
 Prérequis : PHP 8.2+ avec les extensions SQLite et PostgreSQL, Composer, Node.js 22+ et npm.
