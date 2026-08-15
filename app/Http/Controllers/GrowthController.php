@@ -17,15 +17,46 @@ class GrowthController
     public function index(): View
     {
         return view('dashboard', [
-            'campaigns' => MarketingCampaign::latest()->limit(12)->get(),
-            'contents' => MarketingContent::with('campaign')->latest()->limit(12)->get(),
-            'leads' => MarketingLead::with('campaign')->latest()->limit(20)->get(),
             'stats' => [
                 'campaigns' => MarketingCampaign::count(),
                 'draft_contents' => MarketingContent::where('status', 'draft')->count(),
                 'leads' => MarketingLead::count(),
                 'qualified' => MarketingLead::whereIn('status', ['qualified', 'demo', 'won'])->count(),
             ],
+            'campaigns' => MarketingCampaign::latest()->limit(5)->get(),
+            'contents' => MarketingContent::with('campaign')->latest()->limit(5)->get(),
+            'leads' => MarketingLead::with('campaign')->latest()->limit(6)->get(),
+            'aiConfigured' => (bool) config('services.openai.api_key'),
+        ]);
+    }
+
+    public function campaigns(): View
+    {
+        return view('campaigns.index', [
+            'campaigns' => MarketingCampaign::withCount(['contents', 'leads'])->latest()->get(),
+            'aiConfigured' => (bool) config('services.openai.api_key'),
+        ]);
+    }
+
+    public function contents(Request $request): View
+    {
+        $status = $request->string('status')->toString();
+        $query = MarketingContent::with('campaign')->latest();
+        if (in_array($status, ['draft', 'approved', 'rejected', 'published'], true)) {
+            $query->where('status', $status);
+        }
+
+        return view('contents.index', [
+            'contents' => $query->get(),
+            'status' => $status,
+        ]);
+    }
+
+    public function leads(): View
+    {
+        return view('leads.index', [
+            'leads' => MarketingLead::with('campaign')->latest()->get(),
+            'campaigns' => MarketingCampaign::latest()->get(),
             'aiConfigured' => (bool) config('services.openai.api_key'),
         ]);
     }
