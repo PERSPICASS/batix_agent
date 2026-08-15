@@ -1,6 +1,7 @@
 <?php
 
 use App\Http\Controllers\AdminUserController;
+use App\Http\Controllers\FacebookPostController;
 use App\Http\Controllers\GrowthController;
 use App\Http\Controllers\GrowthLoginController;
 use App\Http\Controllers\WhatsAppMessageController;
@@ -28,6 +29,9 @@ Route::middleware('growth.auth')->group(function () {
     Route::post('/leads/{lead}/interactions', [GrowthController::class, 'storeLeadInteraction'])->name('leads.interactions.store');
     Route::post('/leads/{lead}/whatsapp', [WhatsAppMessageController::class, 'store'])->name('leads.whatsapp.store');
     Route::patch('/contents/{content}/status', [GrowthController::class, 'updateContentStatus'])->name('contents.status');
+    Route::post('/facebook-posts', [FacebookPostController::class, 'store'])->name('facebook-posts.store');
+    Route::post('/contents/{content}/facebook-image', [FacebookPostController::class, 'generateImage'])->name('contents.facebook-image.generate');
+    Route::post('/contents/{content}/facebook-publish', [FacebookPostController::class, 'publish'])->name('contents.facebook.publish');
     Route::post('/admins', [AdminUserController::class, 'store'])->name('admins.store');
     Route::patch('/admins/{admin}', [AdminUserController::class, 'update'])->name('admins.update');
     Route::post('/logout', [GrowthLoginController::class, 'destroy'])->name('growth.logout');

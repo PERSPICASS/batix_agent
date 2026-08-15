@@ -27,6 +27,12 @@ export type ContentItem = {
     hook?: string | null;
     body: string;
     cta?: string | null;
+    image_path?: string | null;
+    image_generation_status?: 'idle' | 'queued' | 'processing' | 'completed' | 'failed';
+    image_generation_attempts?: number;
+    image_generation_error?: string | null;
+    facebook_post_id?: string | null;
+    facebook_publish_error?: string | null;
     campaign?: Campaign | null;
     created_at?: string;
 };
@@ -74,5 +80,6 @@ export type SharedProps = {
     flash?: { success?: string | null; error?: string | null };
     aiConfigured?: boolean;
     whatsappConfigured?: boolean;
+    facebookConfigured?: boolean;
     [key: string]: unknown;
 };

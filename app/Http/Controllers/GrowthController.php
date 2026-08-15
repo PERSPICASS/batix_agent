@@ -204,6 +204,10 @@ class GrowthController
 
     public function updateContentStatus(Request $request, MarketingContent $content): RedirectResponse
     {
+        if ($content->status === 'published') {
+            return back()->with('error', 'Un contenu déjà publié ne peut plus être modifié.');
+        }
+
         $data = $request->validate(['status' => ['required', Rule::in(GrowthOptions::CONTENT_STATUSES)]]);
         $content->update($data);
 

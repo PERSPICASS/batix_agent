@@ -34,9 +34,10 @@ class GenerateCampaignContents implements ShouldQueue
             'content_generation_started_at' => now(),
         ]);
 
-        DB::transaction(function () use ($ai, $campaign): void {
+        $facebookPostIds = DB::transaction(function () use ($ai, $campaign): array {
+            $facebookPostIds = [];
             foreach ($ai->generateCampaignContents($campaign) as $content) {
-                MarketingContent::create([
+                $created = MarketingContent::create([
                     'marketing_campaign_id' => $campaign->id,
                     'channel' => $campaign->channel,
                     'format' => $content['format'],
@@ -47,6 +48,9 @@ class GenerateCampaignContents implements ShouldQueue
                     'cta' => $content['cta'],
                     'meta' => ['generated_by' => 'batix-growth-ai', 'generated_at' => now()->toIso8601String()],
                 ]);
+                if ($created->channel === 'facebook' && $created->format === 'post') {
+                    $facebookPostIds[] = $created->id;
+                }
             }
 
             $campaign->update([
@@ -54,7 +58,13 @@ class GenerateCampaignContents implements ShouldQueue
                 'content_generation_error' => null,
                 'content_generation_completed_at' => now(),
             ]);
+
+            return $facebookPostIds;
         });
+
+        foreach ($facebookPostIds as $contentId) {
+            GenerateMarketingImage::dispatch($contentId);
+        }
     }
 
     public function failed(Throwable $exception): void

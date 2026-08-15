@@ -9,6 +9,33 @@ use RuntimeException;
 
 class BatixGrowthAiService
 {
+    public function generateFacebookPost(string $subject, string $audience, ?string $offer): array
+    {
+        $schema = [
+            'type' => 'object',
+            'additionalProperties' => false,
+            'properties' => [
+                'title' => ['type' => 'string'],
+                'hook' => ['type' => 'string'],
+                'body' => ['type' => 'string'],
+                'cta' => ['type' => 'string'],
+            ],
+            'required' => ['title', 'hook', 'body', 'cta'],
+        ];
+
+        return $this->structuredResponse('batix_growth_facebook_post', $schema, implode("\n", [
+            'Tu es BATIX Growth, responsable acquisition de BatixPro.',
+            'Rédige un unique post Facebook prêt à publier pour BatixPro.',
+            'BatixPro aide les commerces, quincailleries, grossistes et distributeurs à gérer ventes, stocks, clients, fournisseurs, factures et inventaires.',
+            'Écris en français naturel, professionnel et direct, adapté au marché ouest-africain sans caricature.',
+            'N’invente ni témoignage, ni chiffre, ni résultat.',
+            'Le hook doit être court. Le body doit être clair, aéré, prêt à être publié avec quelques emojis pertinents et des hashtags sobres.',
+            'Sujet : '.$subject,
+            'Audience : '.$audience,
+            'Offre ou appel à l’action : '.($offer ?: 'Demander une démonstration gratuite de BatixPro.'),
+        ]));
+    }
+
     public function generateCampaignContents(MarketingCampaign $campaign): array
     {
         $schema = [

@@ -3,17 +3,20 @@
 namespace Tests\Feature;
 
 use App\Jobs\GenerateCampaignContents;
+use App\Jobs\GenerateMarketingImage;
 use App\Jobs\ScoreMarketingLead;
 use App\Models\AdminUser;
 use App\Models\MarketingCampaign;
 use App\Models\MarketingContent;
 use App\Models\MarketingLead;
 use App\Services\BatixGrowthAiService;
+use App\Services\MarketingImageService;
 use App\Support\GrowthOptions;
 use Illuminate\Foundation\Testing\RefreshDatabase;
 use Illuminate\Support\Facades\Hash;
 use Illuminate\Support\Facades\Http;
 use Illuminate\Support\Facades\Queue;
+use Illuminate\Support\Facades\Storage;
 use Mockery;
 use RuntimeException;
 use Tests\TestCase;
@@ -257,8 +260,104 @@ class GrowthControllerTest extends TestCase
         ]);
     }
 
+    public function test_a_facebook_post_image_is_generated_and_stored(): void
+    {
+        Storage::fake('public');
+        config([
+            'services.openai.api_key' => 'test-openai-key',
+            'services.openai.image_model' => 'gpt-image-2',
+            'services.openai.image_quality' => 'low',
+        ]);
+        Http::fake([
+            'https://api.openai.com/v1/images/generations' => Http::response([
+                'data' => [['b64_json' => base64_encode('generated-image')]],
+            ]),
+        ]);
+        $content = MarketingContent::create([
+            'channel' => 'facebook',
+            'format' => 'post',
+            'status' => 'draft',
+            'title' => 'Pilotez votre commerce',
+            'body' => 'Simplifiez les ventes et le stock avec BatixPro.',
+        ]);
+
+        (new GenerateMarketingImage($content->id))->handle(app(MarketingImageService::class));
+
+        $content->refresh();
+        $this->assertSame('completed', $content->image_generation_status);
+        $this->assertNotNull($content->image_path);
+        Storage::disk('public')->assertExists($content->image_path);
+    }
+
+    public function test_an_approved_facebook_post_with_an_image_can_be_published(): void
+    {
+        Storage::fake('public');
+        Storage::disk('public')->put('marketing/facebook/post.png', 'image-bytes');
+        config([
+            'services.meta.graph_version' => 'v21.0',
+            'services.meta.page_id' => 'batixpro-page',
+            'services.meta.page_access_token' => 'page-token',
+        ]);
+        Http::fake([
+            'https://graph.facebook.com/v21.0/batixpro-page/photos' => Http::response([
+                'id' => 'facebook-photo-id',
+                'post_id' => 'batixpro-page_facebook-post-id',
+            ]),
+        ]);
+        $content = MarketingContent::create([
+            'channel' => 'facebook',
+            'format' => 'post',
+            'status' => 'approved',
+            'title' => 'Pilotez votre commerce',
+            'body' => 'Simplifiez les ventes et le stock avec BatixPro.',
+            'image_path' => 'marketing/facebook/post.png',
+            'image_generation_status' => 'completed',
+        ]);
+
+        $this->authenticatedRequest()->post("/contents/{$content->id}/facebook-publish")->assertRedirect();
+
+        Http::assertSent(fn ($request) => $request->url() === 'https://graph.facebook.com/v21.0/batixpro-page/photos');
+        $this->assertDatabaseHas('marketing_contents', [
+            'id' => $content->id,
+            'status' => 'published',
+            'facebook_post_id' => 'batixpro-page_facebook-post-id',
+        ]);
+    }
+
+    public function test_an_administrator_can_create_a_facebook_post_from_the_content_interface(): void
+    {
+        Queue::fake();
+        $ai = Mockery::mock(BatixGrowthAiService::class);
+        $ai->shouldReceive('generateFacebookPost')->once()->with(
+            'Éviter les ruptures de stock',
+            'Gérants de commerces',
+            'Demander une démo',
+        )->andReturn([
+            'title' => 'Anticipez vos ruptures de stock',
+            'hook' => 'Votre stock ne devrait jamais vous surprendre.',
+            'body' => 'Pilotez les ventes et le stock avec BatixPro.',
+            'cta' => 'Demander une démo',
+        ]);
+        $this->app->instance(BatixGrowthAiService::class, $ai);
+
+        $this->authenticatedRequest()->post('/facebook-posts', [
+            'subject' => 'Éviter les ruptures de stock',
+            'audience' => 'Gérants de commerces',
+            'offer' => 'Demander une démo',
+        ])->assertRedirect();
+
+        $this->assertDatabaseHas('marketing_contents', [
+            'channel' => 'facebook',
+            'format' => 'post',
+            'status' => 'draft',
+            'title' => 'Anticipez vos ruptures de stock',
+        ]);
+        Queue::assertPushed(GenerateMarketingImage::class);
+    }
+
     public function test_content_generation_job_saves_drafts_and_tracks_completion(): void
     {
+        Queue::fake();
         $campaign = MarketingCampaign::factory()->create();
         $ai = Mockery::mock(BatixGrowthAiService::class);
         $ai->shouldReceive('generateCampaignContents')->once()->andReturn([
@@ -270,6 +369,7 @@ class GrowthControllerTest extends TestCase
         (new GenerateCampaignContents($campaign->id))->handle($ai);
 
         $this->assertSame(3, MarketingContent::where('marketing_campaign_id', $campaign->id)->where('status', 'draft')->count());
+        Queue::assertPushed(GenerateMarketingImage::class, fn (GenerateMarketingImage $job) => $job->contentId > 0);
         $this->assertDatabaseHas('marketing_campaigns', [
             'id' => $campaign->id,
             'content_generation_status' => 'completed',

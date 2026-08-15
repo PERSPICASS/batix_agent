@@ -4,6 +4,8 @@ return [
     'openai' => [
         'api_key' => env('OPENAI_API_KEY'),
         'marketing_model' => env('OPENAI_MARKETING_MODEL', 'gpt-5-mini'),
+        'image_model' => env('OPENAI_IMAGE_MODEL', 'gpt-image-2'),
+        'image_quality' => env('OPENAI_IMAGE_QUALITY', 'low'),
     ],
     'meta' => [
         'app_id' => env('META_APP_ID'),
@@ -11,6 +13,7 @@ return [
         'page_id' => env('META_PAGE_ID'),
         'page_access_token' => env('META_PAGE_ACCESS_TOKEN'),
         'verify_token' => env('META_WEBHOOK_VERIFY_TOKEN'),
+        'graph_version' => env('META_GRAPH_VERSION', 'v21.0'),
     ],
     'whatsapp' => [
         'graph_version' => env('WHATSAPP_GRAPH_VERSION'),

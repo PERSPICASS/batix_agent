@@ -77,6 +77,20 @@ Dans la configuration Webhooks de l’application Meta, utilisez l’URL publiqu
 
 Une fois ces valeurs renseignées et la configuration rechargée, l’interface affiche « WhatsApp connecté » et propose l’envoi depuis chaque fiche prospect.
 
+## Publication Facebook BatixPro
+
+Pour les campagnes Facebook, BATIX Growth génère un post, son visuel carré, puis laisse un administrateur l’approuver avant publication. Ajoutez ces variables au `.env` de production :
+
+```env
+OPENAI_IMAGE_MODEL=gpt-image-2
+OPENAI_IMAGE_QUALITY=low
+META_GRAPH_VERSION=v21.0
+META_PAGE_ID=...
+META_PAGE_ACCESS_TOKEN=...
+```
+
+Le jeton de page doit être autorisé à publier sur la page Facebook BatixPro. Les visuels générés sont conservés dans le volume `storage` et publiés avec la légende validée dans l’interface. La publication n’est jamais automatique.
+
 ## Développement local
 
 Prérequis : PHP 8.2+ avec les extensions SQLite et PostgreSQL, Composer, Node.js 22+ et npm.
