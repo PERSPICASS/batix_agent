@@ -1,5 +1,5 @@
-import { Link, usePage } from '@inertiajs/react';
-import { Bot, FileText, LayoutDashboard, Megaphone, Users } from 'lucide-react';
+import { Link, router, usePage } from '@inertiajs/react';
+import { Bot, FileText, LayoutDashboard, LogOut, Megaphone, ShieldCheck, Users } from 'lucide-react';
 import type { PropsWithChildren, ReactNode } from 'react';
 import type { SharedProps } from '../types';
 
@@ -10,6 +10,7 @@ const navigation = [
     { label: 'Campagnes', href: '/campaigns', icon: Megaphone },
     { label: 'Contenus', href: '/contents', icon: FileText },
     { label: 'Prospects', href: '/leads', icon: Users },
+    { label: 'Administrateurs', href: '/admins', icon: ShieldCheck },
 ];
 
 export default function AppLayout({ title, subtitle, actions, children }: Props) {
@@ -33,6 +34,7 @@ export default function AppLayout({ title, subtitle, actions, children }: Props)
                         </Link>
                     ))}
                 </nav>
+                <button onClick={() => router.post('/logout')} className="mt-5 flex items-center gap-3 rounded-xl px-3 py-2.5 text-sm font-semibold text-slate-400 transition hover:bg-slate-900 hover:text-white"><LogOut size={18}/>Se déconnecter</button>
                 <div className="mt-auto rounded-2xl border border-slate-800 bg-slate-900/60 p-4">
                     <div className="mb-1 text-xs font-bold text-slate-300">Moteur IA</div>
                     <div className={`text-xs font-semibold ${aiConfigured ? 'text-emerald-400' : 'text-amber-300'}`}>{aiConfigured ? '● OpenAI configuré' : '● Clé OpenAI manquante'}</div>
@@ -42,7 +44,7 @@ export default function AppLayout({ title, subtitle, actions, children }: Props)
 
             <div className="lg:pl-64">
                 <div className="sticky top-0 z-20 border-b border-slate-800 bg-slate-950/90 px-4 py-3 backdrop-blur lg:hidden">
-                    <div className="mb-3 flex items-center gap-2 font-black"><Bot className="text-amber-400" size={20}/> BATIX Growth</div>
+                    <div className="mb-3 flex items-center justify-between gap-2 font-black"><div className="flex items-center gap-2"><Bot className="text-amber-400" size={20}/> BATIX Growth</div><button onClick={() => router.post('/logout')} className="text-slate-400 hover:text-white" title="Se déconnecter"><LogOut size={18}/></button></div>
                     <nav className="flex gap-2 overflow-x-auto pb-1">
                         {navigation.map(({ label, href }) => <Link key={href} href={href} className={`whitespace-nowrap rounded-lg px-3 py-2 text-xs font-bold ${active(href) ? 'bg-amber-400 text-slate-950' : 'bg-slate-900 text-slate-300'}`}>{label}</Link>)}
                     </nav>

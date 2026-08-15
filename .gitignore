@@ -1,4 +1,6 @@
 /.env
+/.phpunit.result.cache
+/database/database.sqlite
 /vendor/
 /node_modules/
 /public/build/

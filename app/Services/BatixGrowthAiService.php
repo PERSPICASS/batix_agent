@@ -84,13 +84,14 @@ class BatixGrowthAiService
         ]));
 
         $result['score'] = max(0, min(100, (int) ($result['score'] ?? 0)));
+
         return $result;
     }
 
     private function structuredResponse(string $schemaName, array $schema, string $input): array
     {
         $apiKey = config('services.openai.api_key');
-        if (!$apiKey) {
+        if (! $apiKey) {
             throw new RuntimeException('OPENAI_API_KEY n’est pas configurée.');
         }
 
@@ -117,11 +118,15 @@ class BatixGrowthAiService
         }
 
         foreach ($response->json('output', []) as $item) {
-            if (($item['type'] ?? null) !== 'message') continue;
+            if (($item['type'] ?? null) !== 'message') {
+                continue;
+            }
             foreach ($item['content'] ?? [] as $content) {
                 if (($content['type'] ?? null) === 'output_text' && isset($content['text'])) {
                     $decoded = json_decode($content['text'], true);
-                    if (is_array($decoded)) return $decoded;
+                    if (is_array($decoded)) {
+                        return $decoded;
+                    }
                 }
             }
         }

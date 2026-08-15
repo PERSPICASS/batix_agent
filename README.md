@@ -50,3 +50,54 @@ Le déploiement utilise `docker-compose.yml` + `docker-compose.prod.yml` et la b
 Le workflow GitHub Actions attend `VPS_HOST`, `VPS_USER` et `VPS_SSH_KEY`.
 
 Ne jamais commiter `.env` ni les secrets OpenAI, Meta, WhatsApp ou PostgreSQL.
+
+## Administrateur
+
+Les comptes de connexion sont stockés dans la table `admin_users`. Après les migrations, créez ou mettez à jour un administrateur :
+
+```bash
+php artisan growth:admin admin --name="Administrateur"
+```
+
+La commande demande le mot de passe de façon masquée. Vous pouvez la relancer à tout moment pour modifier le mot de passe ou réactiver le compte.
+
+## Développement local
+
+Prérequis : PHP 8.2+ avec les extensions SQLite et PostgreSQL, Composer, Node.js 22+ et npm.
+
+```bash
+cp .env.example .env
+php artisan key:generate
+composer install
+npm install
+```
+
+Pour travailler sans PostgreSQL ni Redis, utilisez SQLite et les drivers en mémoire dans votre `.env` local :
+
+```env
+APP_ENV=local
+DB_CONNECTION=sqlite
+DB_DATABASE=/chemin/absolu/vers/batix_agent/database/database.sqlite
+CACHE_STORE=array
+QUEUE_CONNECTION=sync
+SESSION_DRIVER=file
+```
+
+Créez ensuite le fichier SQLite, exécutez les migrations et démarrez les processus de développement :
+
+```bash
+touch database/database.sqlite
+php artisan migrate
+npm run dev
+php artisan serve
+```
+
+## Vérifications avant livraison
+
+```bash
+composer lint
+composer test
+npm run build
+```
+
+La CI exécute ces vérifications sur les branches `main` et `prod`, ainsi que pour les pull requests, avant le build de l’image Docker de production.
