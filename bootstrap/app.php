@@ -1,6 +1,6 @@
 <?php
 
-use App\Http\Middleware\GrowthBasicAuth;
+use App\Http\Middleware\GrowthAuthenticate;
 use App\Http\Middleware\HandleInertiaRequests;
 use Illuminate\Foundation\Application;
 use Illuminate\Foundation\Configuration\Exceptions;
@@ -18,7 +18,7 @@ return Application::configure(basePath: dirname(__DIR__))
             \Illuminate\Http\Middleware\AddLinkHeadersForPreloadedAssets::class,
         ]);
         $middleware->trustProxies(at: ['*']);
-        $middleware->alias(['growth.auth' => GrowthBasicAuth::class]);
+        $middleware->alias(['growth.auth' => GrowthAuthenticate::class]);
     })
     ->withExceptions(function (Exceptions $exceptions): void {
         //

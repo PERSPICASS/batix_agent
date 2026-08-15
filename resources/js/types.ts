@@ -43,6 +43,10 @@ export type Lead = {
 };
 
 export type SharedProps = {
+    auth?: {
+        authenticated?: boolean;
+        user?: string | null;
+    };
     flash?: { success?: string | null; error?: string | null };
     aiConfigured?: boolean;
     [key: string]: unknown;

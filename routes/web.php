@@ -1,7 +1,12 @@
 <?php
 
+use App\Http\Controllers\AuthController;
 use App\Http\Controllers\GrowthController;
 use Illuminate\Support\Facades\Route;
+
+Route::get('/login', [AuthController::class, 'create'])->name('login');
+Route::post('/login', [AuthController::class, 'store'])->name('login.store');
+Route::post('/logout', [AuthController::class, 'destroy'])->name('logout');
 
 Route::middleware('growth.auth')->group(function () {
     Route::get('/', [GrowthController::class, 'index'])->name('growth.index');

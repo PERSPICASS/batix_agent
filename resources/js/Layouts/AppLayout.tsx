@@ -1,5 +1,5 @@
 import { Link, usePage } from '@inertiajs/react';
-import { Bot, FileText, LayoutDashboard, Megaphone, Users } from 'lucide-react';
+import { Bot, FileText, LayoutDashboard, LogOut, Megaphone, Users } from 'lucide-react';
 import type { PropsWithChildren, ReactNode } from 'react';
 import type { SharedProps } from '../types';
 
@@ -16,6 +16,7 @@ export default function AppLayout({ title, subtitle, actions, children }: Props)
     const { url, props } = usePage<SharedProps>();
     const flash = props.flash;
     const aiConfigured = Boolean(props.aiConfigured);
+    const adminName = props.auth?.user || 'Administrateur';
 
     const active = (href: string) => href === '/' ? url === '/' : url.startsWith(href);
 
@@ -33,16 +34,22 @@ export default function AppLayout({ title, subtitle, actions, children }: Props)
                         </Link>
                     ))}
                 </nav>
-                <div className="mt-auto rounded-2xl border border-slate-800 bg-slate-900/60 p-4">
-                    <div className="mb-1 text-xs font-bold text-slate-300">Moteur IA</div>
-                    <div className={`text-xs font-semibold ${aiConfigured ? 'text-emerald-400' : 'text-amber-300'}`}>{aiConfigured ? '● OpenAI configuré' : '● Clé OpenAI manquante'}</div>
-                    <p className="mt-2 text-xs leading-5 text-slate-500">Validation humaine avant toute publication ou prise de contact.</p>
+                <div className="mt-auto space-y-3">
+                    <div className="rounded-2xl border border-slate-800 bg-slate-900/60 p-4">
+                        <div className="mb-1 text-xs font-bold text-slate-300">Moteur IA</div>
+                        <div className={`text-xs font-semibold ${aiConfigured ? 'text-emerald-400' : 'text-amber-300'}`}>{aiConfigured ? '● OpenAI configuré' : '● Clé OpenAI manquante'}</div>
+                        <p className="mt-2 text-xs leading-5 text-slate-500">Validation humaine avant toute publication ou prise de contact.</p>
+                    </div>
+                    <div className="flex items-center justify-between gap-2 px-2">
+                        <div className="min-w-0"><div className="truncate text-xs font-bold text-slate-300">{adminName}</div><div className="text-[10px] text-slate-600">Session active</div></div>
+                        <Link href="/logout" method="post" as="button" title="Se déconnecter" className="rounded-lg p-2 text-slate-500 transition hover:bg-slate-900 hover:text-red-300"><LogOut size={17}/></Link>
+                    </div>
                 </div>
             </aside>
 
             <div className="lg:pl-64">
                 <div className="sticky top-0 z-20 border-b border-slate-800 bg-slate-950/90 px-4 py-3 backdrop-blur lg:hidden">
-                    <div className="mb-3 flex items-center gap-2 font-black"><Bot className="text-amber-400" size={20}/> BATIX Growth</div>
+                    <div className="mb-3 flex items-center justify-between gap-2"><div className="flex items-center gap-2 font-black"><Bot className="text-amber-400" size={20}/> BATIX Growth</div><Link href="/logout" method="post" as="button" className="rounded-lg bg-slate-900 p-2 text-slate-400"><LogOut size={16}/></Link></div>
                     <nav className="flex gap-2 overflow-x-auto pb-1">
                         {navigation.map(({ label, href }) => <Link key={href} href={href} className={`whitespace-nowrap rounded-lg px-3 py-2 text-xs font-bold ${active(href) ? 'bg-amber-400 text-slate-950' : 'bg-slate-900 text-slate-300'}`}>{label}</Link>)}
                     </nav>

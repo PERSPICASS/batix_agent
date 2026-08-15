@@ -18,6 +18,10 @@ class HandleInertiaRequests extends Middleware
     {
         return [
             ...parent::share($request),
+            'auth' => [
+                'authenticated' => fn () => (bool) $request->session()->get('growth_authenticated', false),
+                'user' => fn () => $request->session()->get('growth_admin'),
+            ],
             'aiConfigured' => fn () => (bool) config('services.openai.api_key'),
             'flash' => [
                 'success' => fn () => $request->session()->get('success'),
