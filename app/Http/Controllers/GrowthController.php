@@ -9,14 +9,15 @@ use App\Services\BatixGrowthAiService;
 use Illuminate\Http\RedirectResponse;
 use Illuminate\Http\Request;
 use Illuminate\Support\Facades\Log;
-use Illuminate\View\View;
+use Inertia\Inertia;
+use Inertia\Response;
 use Throwable;
 
 class GrowthController
 {
-    public function index(): View
+    public function index(): Response
     {
-        return view('dashboard', [
+        return Inertia::render('Dashboard', [
             'stats' => [
                 'campaigns' => MarketingCampaign::count(),
                 'draft_contents' => MarketingContent::where('status', 'draft')->count(),
@@ -26,19 +27,17 @@ class GrowthController
             'campaigns' => MarketingCampaign::latest()->limit(5)->get(),
             'contents' => MarketingContent::with('campaign')->latest()->limit(5)->get(),
             'leads' => MarketingLead::with('campaign')->latest()->limit(6)->get(),
-            'aiConfigured' => (bool) config('services.openai.api_key'),
         ]);
     }
 
-    public function campaigns(): View
+    public function campaigns(): Response
     {
-        return view('campaigns.index', [
+        return Inertia::render('Campaigns/Index', [
             'campaigns' => MarketingCampaign::withCount(['contents', 'leads'])->latest()->get(),
-            'aiConfigured' => (bool) config('services.openai.api_key'),
         ]);
     }
 
-    public function contents(Request $request): View
+    public function contents(Request $request): Response
     {
         $status = $request->string('status')->toString();
         $query = MarketingContent::with('campaign')->latest();
@@ -46,18 +45,17 @@ class GrowthController
             $query->where('status', $status);
         }
 
-        return view('contents.index', [
+        return Inertia::render('Contents/Index', [
             'contents' => $query->get(),
             'status' => $status,
         ]);
     }
 
-    public function leads(): View
+    public function leads(): Response
     {
-        return view('leads.index', [
+        return Inertia::render('Leads/Index', [
             'leads' => MarketingLead::with('campaign')->latest()->get(),
             'campaigns' => MarketingCampaign::latest()->get(),
-            'aiConfigured' => (bool) config('services.openai.api_key'),
         ]);
     }
 
@@ -125,7 +123,9 @@ class GrowthController
                 'warm' => 'contacted',
                 default => 'new',
             };
-            if (in_array($lead->status, ['demo', 'won'], true)) $nextStatus = $lead->status;
+            if (in_array($lead->status, ['qualified', 'demo', 'won'], true)) {
+                $nextStatus = $lead->status;
+            }
             $lead->update([
                 'score' => $result['score'],
                 'status' => $nextStatus,
