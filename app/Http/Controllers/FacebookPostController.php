@@ -2,7 +2,6 @@
 
 namespace App\Http\Controllers;
 
-use App\Jobs\GenerateMarketingImage;
 use App\Models\MarketingContent;
 use App\Services\BatixGrowthAiService;
 use App\Services\FacebookPageService;
@@ -23,7 +22,7 @@ class FacebookPostController
 
         try {
             $post = $ai->generateFacebookPost($data['subject'], $data['audience'], $data['offer'] ?? null);
-            $content = MarketingContent::create([
+            MarketingContent::create([
                 'channel' => 'facebook',
                 'format' => 'post',
                 'status' => 'draft',
@@ -33,32 +32,13 @@ class FacebookPostController
                 'cta' => $post['cta'],
                 'meta' => ['generated_by' => 'batix-growth-ai', 'generated_at' => now()->toIso8601String()],
             ]);
-            GenerateMarketingImage::dispatch($content->id);
 
-            return back()->with('success', 'Post Facebook créé. Son visuel est en cours de génération.');
+            return back()->with('success', 'Post Facebook créé en brouillon.');
         } catch (Throwable $exception) {
             Log::warning('Facebook post could not be generated.', ['exception' => $exception]);
 
-            return back()->with('error', 'La génération du post a échoué. Vérifiez la clé OpenAI et réessayez.');
+            return back()->with('error', 'La génération du post a échoué. Vérifiez la clé Anthropic et réessayez.');
         }
-    }
-
-    public function generateImage(MarketingContent $content): RedirectResponse
-    {
-        if (! $this->isFacebookPost($content)) {
-            return back()->with('error', 'Un visuel ne peut être généré que pour un post Facebook.');
-        }
-        if (in_array($content->image_generation_status, ['queued', 'processing'], true)) {
-            return back()->with('error', 'La génération du visuel est déjà en cours.');
-        }
-
-        $content->update([
-            'image_generation_status' => 'queued',
-            'image_generation_error' => null,
-        ]);
-        GenerateMarketingImage::dispatch($content->id);
-
-        return back()->with('success', 'Génération du visuel Facebook programmée.');
     }
 
     public function publish(MarketingContent $content, FacebookPageService $facebook): RedirectResponse

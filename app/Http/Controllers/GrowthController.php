@@ -129,7 +129,7 @@ class GrowthController
                 'content_generation_completed_at' => now(),
             ]);
 
-            return back()->with('error', 'La génération IA n’a pas pu être programmée. Consultez les logs serveur.');
+            return back()->with('error', 'La génération IA a échoué. Vérifiez la configuration Claude puis réessayez.');
         }
     }
 

@@ -1,11 +1,9 @@
 <?php
 
 return [
-    'openai' => [
-        'api_key' => env('OPENAI_API_KEY'),
-        'marketing_model' => env('OPENAI_MARKETING_MODEL', 'gpt-5-mini'),
-        'image_model' => env('OPENAI_IMAGE_MODEL', 'gpt-image-2'),
-        'image_quality' => env('OPENAI_IMAGE_QUALITY', 'low'),
+    'anthropic' => [
+        'api_key' => env('ANTHROPIC_API_KEY'),
+        'model' => env('ANTHROPIC_MODEL', 'claude-sonnet-5'),
     ],
     'meta' => [
         'app_id' => env('META_APP_ID'),

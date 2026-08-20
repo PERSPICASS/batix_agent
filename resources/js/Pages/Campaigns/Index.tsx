@@ -57,7 +57,7 @@ export default function Campaigns({ campaigns }: Props) {
     });
 
     return (
-        <AppLayout title="Campagnes" subtitle="Crée des campagnes structurées et demande à BATIX Growth de produire les déclinaisons de contenu nécessaires." actions={<div className={`rounded-full border px-3 py-2 text-xs font-bold ${aiConfigured ? 'border-emerald-800 bg-emerald-950/50 text-emerald-300' : 'border-amber-800 bg-amber-950/50 text-amber-300'}`}>{aiConfigured ? 'IA disponible' : 'OPENAI_API_KEY manquante'}</div>}>
+        <AppLayout title="Campagnes" subtitle="Crée des campagnes structurées et demande à BATIX Growth de produire les déclinaisons de contenu nécessaires." actions={<div className={`rounded-full border px-3 py-2 text-xs font-bold ${aiConfigured ? 'border-emerald-800 bg-emerald-950/50 text-emerald-300' : 'border-amber-800 bg-amber-950/50 text-amber-300'}`}>{aiConfigured ? 'Claude disponible' : 'ANTHROPIC_API_KEY manquante'}</div>}>
             <Head title="Campagnes" />
             <div className="grid gap-6 xl:grid-cols-[390px_1fr]">
                 <section className="panel h-fit p-5">

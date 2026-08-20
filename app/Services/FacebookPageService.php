@@ -19,18 +19,23 @@ class FacebookPageService
         if (! $this->configured()) {
             throw new RuntimeException('La page Facebook BatixPro n’est pas configurée.');
         }
-        if (! $content->image_path || ! Storage::disk('public')->exists($content->image_path)) {
-            throw new RuntimeException('Le visuel du post est introuvable.');
-        }
-
-        $response = Http::withToken(config('services.meta.page_access_token'))
+        $request = Http::withToken(config('services.meta.page_access_token'))
             ->acceptJson()
-            ->timeout(60)
-            ->attach('source', Storage::disk('public')->get($content->image_path), basename($content->image_path))
-            ->post($this->photosUrl(), [
-                'caption' => $this->captionFor($content),
+            ->timeout(60);
+
+        if ($content->image_path && Storage::disk('public')->exists($content->image_path)) {
+            $response = $request
+                ->attach('source', Storage::disk('public')->get($content->image_path), basename($content->image_path))
+                ->post($this->graphUrl('photos'), [
+                    'caption' => $this->captionFor($content),
+                    'published' => 'true',
+                ]);
+        } else {
+            $response = $request->post($this->graphUrl('feed'), [
+                'message' => $this->captionFor($content),
                 'published' => 'true',
             ]);
+        }
 
         if ($response->failed()) {
             throw new RuntimeException('Facebook Graph API error '.$response->status());
@@ -39,12 +44,13 @@ class FacebookPageService
         return $response->json();
     }
 
-    private function photosUrl(): string
+    private function graphUrl(string $endpoint): string
     {
         return sprintf(
-            'https://graph.facebook.com/%s/%s/photos',
+            'https://graph.facebook.com/%s/%s/%s',
             config('services.meta.graph_version', 'v21.0'),
             config('services.meta.page_id'),
+            $endpoint,
         );
     }
 

@@ -1,6 +1,6 @@
 import { Link, router, usePage } from '@inertiajs/react';
-import { Bot, FileText, LayoutDashboard, LogOut, Megaphone, ShieldCheck, Users } from 'lucide-react';
-import type { PropsWithChildren, ReactNode } from 'react';
+import { Bot, FileText, LayoutDashboard, LogOut, Megaphone, ShieldCheck, Users, X } from 'lucide-react';
+import { useEffect, useState, type PropsWithChildren, type ReactNode } from 'react';
 import type { SharedProps } from '../types';
 
 type Props = PropsWithChildren<{ title: string; subtitle: string; actions?: ReactNode }>;
@@ -17,6 +17,17 @@ export default function AppLayout({ title, subtitle, actions, children }: Props)
     const { url, props } = usePage<SharedProps>();
     const flash = props.flash;
     const aiConfigured = Boolean(props.aiConfigured);
+    const [flashVisible, setFlashVisible] = useState(Boolean(flash?.success || flash?.error));
+
+    useEffect(() => {
+        const hasMessage = Boolean(flash?.success || flash?.error);
+        setFlashVisible(hasMessage);
+        if (!hasMessage) return;
+
+        const timer = window.setTimeout(() => setFlashVisible(false), 6000);
+
+        return () => window.clearTimeout(timer);
+    }, [flash]);
 
     const active = (href: string) => href === '/' ? url === '/' : url.startsWith(href);
 
@@ -37,7 +48,7 @@ export default function AppLayout({ title, subtitle, actions, children }: Props)
                 <button onClick={() => router.post('/logout')} className="mt-5 flex items-center gap-3 rounded-xl px-3 py-2.5 text-sm font-semibold text-slate-400 transition hover:bg-slate-900 hover:text-white"><LogOut size={18}/>Se déconnecter</button>
                 <div className="mt-auto rounded-2xl border border-slate-800 bg-slate-900/60 p-4">
                     <div className="mb-1 text-xs font-bold text-slate-300">Moteur IA</div>
-                    <div className={`text-xs font-semibold ${aiConfigured ? 'text-emerald-400' : 'text-amber-300'}`}>{aiConfigured ? '● OpenAI configuré' : '● Clé OpenAI manquante'}</div>
+                    <div className={`text-xs font-semibold ${aiConfigured ? 'text-emerald-400' : 'text-amber-300'}`}>{aiConfigured ? '● Claude configuré' : '● Clé Anthropic manquante'}</div>
                     <p className="mt-2 text-xs leading-5 text-slate-500">Validation humaine avant toute publication ou prise de contact.</p>
                 </div>
             </aside>
@@ -56,8 +67,8 @@ export default function AppLayout({ title, subtitle, actions, children }: Props)
                         {actions && <div className="flex flex-wrap gap-2">{actions}</div>}
                     </header>
 
-                    {flash?.success && <div className="mb-5 rounded-xl border border-emerald-700/50 bg-emerald-950/60 px-4 py-3 text-sm text-emerald-200">{flash.success}</div>}
-                    {flash?.error && <div className="mb-5 rounded-xl border border-red-800/60 bg-red-950/60 px-4 py-3 text-sm text-red-200">{flash.error}</div>}
+                    {flashVisible && flash?.success && <div className="mb-5 flex items-center justify-between gap-3 rounded-xl border border-emerald-700/50 bg-emerald-950/60 px-4 py-3 text-sm text-emerald-200"><span>{flash.success}</span><button type="button" onClick={() => setFlashVisible(false)} className="shrink-0 rounded-lg p-1 text-emerald-300 transition hover:bg-emerald-900/70 hover:text-white" aria-label="Fermer le message"><X size={16}/></button></div>}
+                    {flashVisible && flash?.error && <div className="mb-5 flex items-center justify-between gap-3 rounded-xl border border-red-800/60 bg-red-950/60 px-4 py-3 text-sm text-red-200"><span>{flash.error}</span><button type="button" onClick={() => setFlashVisible(false)} className="shrink-0 rounded-lg p-1 text-red-300 transition hover:bg-red-900/70 hover:text-white" aria-label="Fermer le message"><X size={16}/></button></div>}
                     {children}
                 </main>
             </div>

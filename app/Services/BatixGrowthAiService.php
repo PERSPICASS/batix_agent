@@ -4,11 +4,14 @@ namespace App\Services;
 
 use App\Models\MarketingCampaign;
 use App\Models\MarketingLead;
-use Illuminate\Support\Facades\Http;
 use RuntimeException;
 
 class BatixGrowthAiService
 {
+    private const DEFAULT_POST_HASHTAGS = ['#BatixPro', '#GestionCommerciale', '#GestionDeStock'];
+
+    public function __construct(private readonly ClaudeService $claude) {}
+
     public function generateFacebookPost(string $subject, string $audience, ?string $offer): array
     {
         $schema = [
@@ -19,21 +22,36 @@ class BatixGrowthAiService
                 'hook' => ['type' => 'string'],
                 'body' => ['type' => 'string'],
                 'cta' => ['type' => 'string'],
+                'hashtags' => [
+                    'type' => 'object',
+                    'additionalProperties' => false,
+                    'properties' => [
+                        'topic' => ['type' => 'string'],
+                        'audience' => ['type' => 'string'],
+                        'benefit' => ['type' => 'string'],
+                        'brand' => ['type' => 'string'],
+                    ],
+                    'required' => ['topic', 'audience', 'benefit', 'brand'],
+                ],
             ],
-            'required' => ['title', 'hook', 'body', 'cta'],
+            'required' => ['title', 'hook', 'body', 'cta', 'hashtags'],
         ];
 
-        return $this->structuredResponse('batix_growth_facebook_post', $schema, implode("\n", [
+        $post = $this->structuredResponse($schema, implode("\n", [
             'Tu es BATIX Growth, responsable acquisition de BatixPro.',
             'Rédige un unique post Facebook prêt à publier pour BatixPro.',
             'BatixPro aide les commerces, quincailleries, grossistes et distributeurs à gérer ventes, stocks, clients, fournisseurs, factures et inventaires.',
             'Écris en français naturel, professionnel et direct, adapté au marché ouest-africain sans caricature.',
             'N’invente ni témoignage, ni chiffre, ni résultat.',
-            'Le hook doit être court. Le body doit être clair, aéré, prêt à être publié avec quelques emojis pertinents et des hashtags sobres.',
+            'Le hook doit être court. Le body doit être clair, aéré et prêt à être publié avec quelques emojis pertinents.',
+            'Propose dans le champ hashtags 3 à 5 hashtags réellement liés au sujet, au secteur et à l’audience, dont #BatixPro.',
+            'N’écris aucun hashtag dans le body : ils seront ajoutés automatiquement à la fin du post.',
             'Sujet : '.$subject,
             'Audience : '.$audience,
             'Offre ou appel à l’action : '.($offer ?: 'Demander une démonstration gratuite de BatixPro.'),
         ]));
+
+        return $this->ensurePostHashtags($post);
     }
 
     public function generateCampaignContents(MarketingCampaign $campaign): array
@@ -53,21 +71,34 @@ class BatixGrowthAiService
                             'hook' => ['type' => 'string'],
                             'body' => ['type' => 'string'],
                             'cta' => ['type' => 'string'],
+                            'hashtags' => [
+                                'type' => 'object',
+                                'additionalProperties' => false,
+                                'properties' => [
+                                    'topic' => ['type' => 'string'],
+                                    'audience' => ['type' => 'string'],
+                                    'benefit' => ['type' => 'string'],
+                                    'brand' => ['type' => 'string'],
+                                ],
+                                'required' => ['topic', 'audience', 'benefit', 'brand'],
+                            ],
                         ],
-                        'required' => ['format', 'title', 'hook', 'body', 'cta'],
+                        'required' => ['format', 'title', 'hook', 'body', 'cta', 'hashtags'],
                     ],
                 ],
             ],
             'required' => ['contents'],
         ];
 
-        $result = $this->structuredResponse('batix_growth_campaign_content', $schema, implode("\n", [
+        $result = $this->structuredResponse($schema, implode("\n", [
             'Tu es BATIX Growth, responsable acquisition de BatixPro.',
             'BatixPro aide les commerces, quincailleries, grossistes et distributeurs à gérer ventes, stocks, clients, fournisseurs, factures, inventaires, boutiques et utilisateurs.',
             'Objectif : générer des conversations WhatsApp qualifiées puis des démonstrations.',
             'Écris en français naturel, professionnel et direct, adapté au marché ouest-africain sans caricature.',
             'N’invente ni témoignage, ni chiffre, ni résultat.',
             'Génère exactement trois contenus complémentaires : un post, un script Reel et une publicité.',
+            'Pour chaque contenu, propose dans le champ hashtags 3 à 5 hashtags spécifiques à son sujet, au secteur et à l’audience, dont #BatixPro.',
+            'N’écris aucun hashtag dans le body : ils seront ajoutés automatiquement au contenu au format post.',
             "Canal : {$campaign->channel}",
             "Campagne : {$campaign->name}",
             "Objectif : {$campaign->objective}",
@@ -80,7 +111,12 @@ class BatixGrowthAiService
             throw new RuntimeException('Le moteur IA doit produire exactement trois contenus.');
         }
 
-        return $contents;
+        return array_map(
+            fn (array $content): array => ($content['format'] ?? null) === 'post'
+                ? $this->ensurePostHashtags($content)
+                : $content,
+            $contents,
+        );
     }
 
     public function scoreLead(MarketingLead $lead): array
@@ -98,7 +134,7 @@ class BatixGrowthAiService
             'required' => ['score', 'qualification', 'summary', 'next_action', 'whatsapp_message'],
         ];
 
-        $result = $this->structuredResponse('batix_growth_lead_score', $schema, implode("\n", [
+        $result = $this->structuredResponse($schema, implode("\n", [
             'Tu es BATIX Growth, assistant commercial de BatixPro.',
             'Évalue uniquement les informations fournies. N’invente rien et ne déduis aucune donnée sensible.',
             'Le score est compris entre 0 et 100 et mesure la pertinence d’une démonstration BatixPro maintenant.',
@@ -115,49 +151,48 @@ class BatixGrowthAiService
         return $result;
     }
 
-    private function structuredResponse(string $schemaName, array $schema, string $input): array
+    private function structuredResponse(array $schema, string $input): array
     {
-        $apiKey = config('services.openai.api_key');
-        if (! $apiKey) {
-            throw new RuntimeException('OPENAI_API_KEY n’est pas configurée.');
-        }
+        return $this->claude->structured($schema, $input);
+    }
 
-        $response = Http::withToken($apiKey)
-            ->acceptJson()
-            ->timeout(60)
-            ->retry(2, 500)
-            ->post('https://api.openai.com/v1/responses', [
-                'model' => config('services.openai.marketing_model', 'gpt-5-mini'),
-                'store' => false,
-                'input' => $input,
-                'text' => [
-                    'format' => [
-                        'type' => 'json_schema',
-                        'name' => $schemaName,
-                        'schema' => $schema,
-                        'strict' => true,
-                    ],
-                ],
-            ]);
-
-        if ($response->failed()) {
-            throw new RuntimeException('OpenAI API error '.$response->status());
-        }
-
-        foreach ($response->json('output', []) as $item) {
-            if (($item['type'] ?? null) !== 'message') {
+    private function ensurePostHashtags(array $content): array
+    {
+        $hashtags = [];
+        foreach ($content['hashtags'] ?? [] as $hashtag) {
+            $normalized = preg_replace('/[^\p{L}\p{N}_]+/u', '', ltrim(trim((string) $hashtag), '#'));
+            if ($normalized === '') {
                 continue;
             }
-            foreach ($item['content'] ?? [] as $content) {
-                if (($content['type'] ?? null) === 'output_text' && isset($content['text'])) {
-                    $decoded = json_decode($content['text'], true);
-                    if (is_array($decoded)) {
-                        return $decoded;
-                    }
-                }
+
+            $normalized = '#'.$normalized;
+            if (! in_array(mb_strtolower($normalized), array_map('mb_strtolower', $hashtags), true)) {
+                $hashtags[] = $normalized;
             }
         }
 
-        throw new RuntimeException('Réponse IA inexploitable.');
+        $hasBrandHashtag = in_array(mb_strtolower('#BatixPro'), array_map('mb_strtolower', $hashtags), true);
+        if (! $hasBrandHashtag) {
+            if (count($hashtags) >= 5) {
+                array_pop($hashtags);
+            }
+            $hashtags[] = '#BatixPro';
+        }
+
+        foreach (self::DEFAULT_POST_HASHTAGS as $fallback) {
+            if (count($hashtags) >= 3) {
+                break;
+            }
+            if (! in_array(mb_strtolower($fallback), array_map('mb_strtolower', $hashtags), true)) {
+                $hashtags[] = $fallback;
+            }
+        }
+
+        $body = rtrim((string) ($content['body'] ?? ''));
+        $body = preg_replace('/\s*(?:#[\p{L}\p{N}_]+\s*)+$/u', '', $body) ?? $body;
+        $content['body'] = ($body === '' ? '' : $body."\n\n").implode(' ', array_slice($hashtags, 0, 5));
+        unset($content['hashtags']);
+
+        return $content;
     }
 }

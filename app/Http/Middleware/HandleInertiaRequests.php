@@ -20,7 +20,7 @@ class HandleInertiaRequests extends Middleware
     {
         return [
             ...parent::share($request),
-            'aiConfigured' => fn () => (bool) config('services.openai.api_key'),
+            'aiConfigured' => fn () => (bool) config('services.anthropic.api_key'),
             'whatsappConfigured' => fn () => app(WhatsAppCloudService::class)->configured(),
             'facebookConfigured' => fn () => app(FacebookPageService::class)->configured(),
             'flash' => [

@@ -49,7 +49,16 @@ Le déploiement utilise `docker-compose.yml` + `docker-compose.prod.yml` et la b
 
 Le workflow GitHub Actions attend `VPS_HOST`, `VPS_USER` et `VPS_SSH_KEY`.
 
-Ne jamais commiter `.env` ni les secrets OpenAI, Meta, WhatsApp ou PostgreSQL.
+Ne jamais commiter `.env` ni les secrets Anthropic, Meta, WhatsApp ou PostgreSQL.
+
+## Moteur IA Claude
+
+La génération des campagnes, des posts et des recommandations commerciales utilise l’API Anthropic avec Claude Sonnet 5. Configurez le serveur avec :
+
+```env
+ANTHROPIC_API_KEY=...
+ANTHROPIC_MODEL=claude-sonnet-5
+```
 
 ## Administrateur
 
@@ -79,17 +88,15 @@ Une fois ces valeurs renseignées et la configuration rechargée, l’interface 
 
 ## Publication Facebook BatixPro
 
-Pour les campagnes Facebook, BATIX Growth génère un post, son visuel carré, puis laisse un administrateur l’approuver avant publication. Ajoutez ces variables au `.env` de production :
+Pour les campagnes Facebook, BATIX Growth génère le texte du post, puis laisse un administrateur l’approuver avant publication. Ajoutez ces variables au `.env` de production :
 
 ```env
-OPENAI_IMAGE_MODEL=gpt-image-2
-OPENAI_IMAGE_QUALITY=low
 META_GRAPH_VERSION=v21.0
 META_PAGE_ID=...
 META_PAGE_ACCESS_TOKEN=...
 ```
 
-Le jeton de page doit être autorisé à publier sur la page Facebook BatixPro. Les visuels générés sont conservés dans le volume `storage` et publiés avec la légende validée dans l’interface. La publication n’est jamais automatique.
+Le jeton de page doit être autorisé à publier sur la page Facebook BatixPro. Les posts sont publiés en texte seul ; une ancienne image déjà associée à un contenu reste utilisable. La publication n’est jamais automatique.
 
 ## Développement local
 
