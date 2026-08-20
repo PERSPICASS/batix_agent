@@ -1,5 +1,5 @@
 import { Head, Link, router, useForm, usePage } from '@inertiajs/react';
-import { Check, Copy, FileText, Loader2, Send, Sparkles, X } from 'lucide-react';
+import { Check, Copy, Facebook, FileText, Link2, Loader2, Send, Sparkles, Unlink, X } from 'lucide-react';
 import { FormEvent, useState } from 'react';
 import AppLayout from '../../Layouts/AppLayout';
 import type { ContentItem, SharedProps } from '../../types';
@@ -11,6 +11,8 @@ export default function Contents({ contents, status }: Props) {
     const { props } = usePage<SharedProps>();
     const aiConfigured = Boolean(props.aiConfigured);
     const facebookConfigured = Boolean(props.facebookConfigured);
+    const facebookOAuthConfigured = Boolean(props.facebookOAuthConfigured);
+    const facebookConnection = props.facebookConnection;
     const [copied, setCopied] = useState<number|null>(null);
     const postForm = useForm({
         subject: '',
@@ -20,6 +22,7 @@ export default function Contents({ contents, status }: Props) {
     const update = (id:number,next:string) => router.patch(`/contents/${id}/status`, { status: next }, { preserveScroll: true });
     const copy = async (item:ContentItem) => { await navigator.clipboard.writeText([item.hook,item.body,item.cta].filter(Boolean).join('\n\n')); setCopied(item.id); setTimeout(()=>setCopied(null),1200); };
     const publish = (id: number) => router.post(`/contents/${id}/facebook-publish`, {}, { preserveScroll: true });
+    const disconnectFacebook = () => router.delete('/facebook/connection', { preserveScroll: true });
     const createPost = (event: FormEvent) => {
         event.preventDefault();
         postForm.post('/facebook-posts', {
@@ -28,7 +31,13 @@ export default function Contents({ contents, status }: Props) {
         });
     };
 
-    return <AppLayout title="Contenus" subtitle="Bibliothèque des créations produites par l’agent. Chaque post Facebook est relu avant sa publication sur la page BatixPro." actions={<div className="flex items-center gap-2"><span className={`rounded-full border px-3 py-2 text-xs font-bold ${facebookConfigured ? 'border-emerald-800 text-emerald-300' : 'border-slate-700 text-slate-400'}`}>{facebookConfigured ? 'Facebook connecté' : 'Facebook à configurer'}</span><Link href="/campaigns" className="btn-primary">Créer depuis une campagne</Link></div>}>
+    const facebookActions = facebookConfigured
+        ? <><span className="rounded-full border border-emerald-800 px-3 py-2 text-xs font-bold text-emerald-300"><Facebook size={14} className="mr-1.5 inline"/>{facebookConnection?.pageName ?? 'Facebook connecté'}</span>{facebookConnection?.managed && <button className="btn-secondary" onClick={disconnectFacebook}><Unlink size={15}/>Déconnecter</button>}</>
+        : facebookOAuthConfigured
+            ? <a href="/facebook/connect" className="btn-secondary"><Link2 size={15}/>Connecter Facebook</a>
+            : <span className="rounded-full border border-slate-700 px-3 py-2 text-xs font-bold text-slate-400">Configuration Meta requise</span>;
+
+    return <AppLayout title="Contenus" subtitle="Bibliothèque des créations produites par l’agent. Chaque post Facebook est relu avant sa publication sur la page BatixPro." actions={<div className="flex flex-wrap items-center gap-2">{facebookActions}<Link href="/campaigns" className="btn-primary">Créer depuis une campagne</Link></div>}>
         <Head title="Contenus" />
         <div className="grid items-start gap-6 lg:grid-cols-[minmax(300px,0.72fr)_minmax(360px,1.28fr)]">
             <section className="panel p-5 sm:p-6 lg:sticky lg:top-24">

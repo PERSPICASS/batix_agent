@@ -2,6 +2,7 @@
 
 namespace App\Http\Middleware;
 
+use App\Services\FacebookOAuthService;
 use App\Services\FacebookPageService;
 use App\Services\WhatsAppCloudService;
 use Illuminate\Http\Request;
@@ -23,6 +24,8 @@ class HandleInertiaRequests extends Middleware
             'aiConfigured' => fn () => (bool) config('services.anthropic.api_key'),
             'whatsappConfigured' => fn () => app(WhatsAppCloudService::class)->configured(),
             'facebookConfigured' => fn () => app(FacebookPageService::class)->configured(),
+            'facebookConnection' => fn () => app(FacebookPageService::class)->connectionDetails(),
+            'facebookOAuthConfigured' => fn () => app(FacebookOAuthService::class)->configured(),
             'flash' => [
                 'success' => fn () => $request->session()->get('success'),
                 'error' => fn () => $request->session()->get('error'),

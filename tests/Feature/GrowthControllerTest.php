@@ -5,12 +5,14 @@ namespace Tests\Feature;
 use App\Jobs\GenerateCampaignContents;
 use App\Jobs\ScoreMarketingLead;
 use App\Models\AdminUser;
+use App\Models\FacebookConnection;
 use App\Models\MarketingCampaign;
 use App\Models\MarketingContent;
 use App\Models\MarketingLead;
 use App\Services\BatixGrowthAiService;
 use App\Support\GrowthOptions;
 use Illuminate\Foundation\Testing\RefreshDatabase;
+use Illuminate\Support\Facades\DB;
 use Illuminate\Support\Facades\Hash;
 use Illuminate\Support\Facades\Http;
 use Illuminate\Support\Facades\Queue;
@@ -338,8 +340,13 @@ class GrowthControllerTest extends TestCase
     {
         config([
             'services.meta.graph_version' => 'v21.0',
-            'services.meta.page_id' => 'batixpro-page',
-            'services.meta.page_access_token' => 'page-token',
+            'services.meta.page_id' => null,
+            'services.meta.page_access_token' => null,
+        ]);
+        FacebookConnection::create([
+            'page_id' => 'batixpro-page',
+            'page_name' => 'BatixPro',
+            'access_token' => 'page-token',
         ]);
         Http::fake([
             'https://graph.facebook.com/v21.0/batixpro-page/feed' => Http::response([
@@ -358,12 +365,62 @@ class GrowthControllerTest extends TestCase
         $this->authenticatedRequest()->post("/contents/{$content->id}/facebook-publish")->assertRedirect();
 
         Http::assertSent(fn ($request) => $request->url() === 'https://graph.facebook.com/v21.0/batixpro-page/feed'
+            && $request->hasHeader('Authorization', 'Bearer page-token')
             && $request['message'] === "Votre stock sous contrôle.\n\nSimplifiez les ventes et le stock avec BatixPro.\n\nDemandez une démonstration.");
         $this->assertDatabaseHas('marketing_contents', [
             'id' => $content->id,
             'status' => 'published',
             'facebook_post_id' => 'batixpro-page_facebook-text-post-id',
         ]);
+    }
+
+    public function test_an_administrator_can_connect_their_facebook_page_with_oauth(): void
+    {
+        config([
+            'services.meta.app_id' => 'meta-app-id',
+            'services.meta.app_secret' => 'meta-app-secret',
+            'services.meta.graph_version' => 'v25.0',
+            'services.meta.redirect_uri' => 'https://growth.example.com/facebook/callback',
+        ]);
+        Http::fake([
+            'https://graph.facebook.com/v25.0/oauth/access_token*' => Http::sequence()
+                ->push(['access_token' => 'short-lived-user-token'])
+                ->push(['access_token' => 'long-lived-user-token']),
+            'https://graph.facebook.com/v25.0/me/accounts*' => Http::response([
+                'data' => [[
+                    'id' => 'batixpro-page',
+                    'name' => 'BatixPro',
+                    'access_token' => 'long-lived-page-token',
+                    'tasks' => ['CREATE_CONTENT'],
+                ]],
+            ]),
+        ]);
+
+        $this->authenticatedRequest()
+            ->withSession(['facebook_oauth_state' => 'valid-state'])
+            ->get('/facebook/callback?state=valid-state&code=authorization-code')
+            ->assertRedirect('/contents')
+            ->assertSessionHas('success');
+
+        $connection = FacebookConnection::query()->firstOrFail();
+        $this->assertSame('batixpro-page', $connection->page_id);
+        $this->assertSame('BatixPro', $connection->page_name);
+        $this->assertSame('long-lived-page-token', $connection->access_token);
+        $this->assertNotSame('long-lived-page-token', DB::table('facebook_connections')->value('access_token'));
+    }
+
+    public function test_facebook_oauth_rejects_an_invalid_state(): void
+    {
+        Http::fake();
+
+        $this->authenticatedRequest()
+            ->withSession(['facebook_oauth_state' => 'expected-state'])
+            ->get('/facebook/callback?state=wrong-state&code=authorization-code')
+            ->assertRedirect('/contents')
+            ->assertSessionHas('error');
+
+        Http::assertNothingSent();
+        $this->assertDatabaseEmpty('facebook_connections');
     }
 
     public function test_an_administrator_can_create_a_facebook_post_from_the_content_interface(): void

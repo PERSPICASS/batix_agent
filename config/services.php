@@ -11,7 +11,8 @@ return [
         'page_id' => env('META_PAGE_ID'),
         'page_access_token' => env('META_PAGE_ACCESS_TOKEN'),
         'verify_token' => env('META_WEBHOOK_VERIFY_TOKEN'),
-        'graph_version' => env('META_GRAPH_VERSION', 'v21.0'),
+        'graph_version' => env('META_GRAPH_VERSION', 'v25.0'),
+        'redirect_uri' => env('META_REDIRECT_URI'),
     ],
     'whatsapp' => [
         'graph_version' => env('WHATSAPP_GRAPH_VERSION'),

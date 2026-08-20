@@ -88,15 +88,22 @@ Une fois ces valeurs renseignées et la configuration rechargée, l’interface 
 
 ## Publication Facebook BatixPro
 
-Pour les campagnes Facebook, BATIX Growth génère le texte du post, puis laisse un administrateur l’approuver avant publication. Ajoutez ces variables au `.env` de production :
+Pour les campagnes Facebook, BATIX Growth génère le texte du post, puis laisse un administrateur l’approuver avant publication. Créez une application Meta, activez Facebook Login et ajoutez cette URI de redirection OAuth :
 
-```env
-META_GRAPH_VERSION=v21.0
-META_PAGE_ID=...
-META_PAGE_ACCESS_TOKEN=...
+```text
+https://votre-domaine/facebook/callback
 ```
 
-Le jeton de page doit être autorisé à publier sur la page Facebook BatixPro. Les posts sont publiés en texte seul ; une ancienne image déjà associée à un contenu reste utilisable. La publication n’est jamais automatique.
+Demandez les permissions `pages_show_list`, `pages_read_engagement` et `pages_manage_posts`, puis ajoutez ces variables au `.env` de production :
+
+```env
+META_APP_ID=...
+META_APP_SECRET=...
+META_GRAPH_VERSION=v25.0
+META_REDIRECT_URI=https://votre-domaine/facebook/callback
+```
+
+Rechargez la configuration, ouvrez **Contenus**, cliquez sur **Connecter Facebook** et autorisez la page. Le jeton de page est alors stocké chiffré en base. `META_PAGE_ID` et `META_PAGE_ACCESS_TOKEN` restent disponibles comme solution de repli pour les installations configurées manuellement. Les posts approuvés peuvent être publiés en texte ou avec l’image associée ; la publication n’est jamais automatique.
 
 ## Développement local
 

@@ -2,6 +2,7 @@
 
 namespace App\Services;
 
+use App\Models\FacebookConnection;
 use App\Models\MarketingContent;
 use Illuminate\Support\Facades\Http;
 use Illuminate\Support\Facades\Storage;
@@ -11,7 +12,29 @@ class FacebookPageService
 {
     public function configured(): bool
     {
-        return filled(config('services.meta.page_id')) && filled(config('services.meta.page_access_token'));
+        return FacebookConnection::query()->exists()
+            || (filled(config('services.meta.page_id')) && filled(config('services.meta.page_access_token')));
+    }
+
+    public function connectionDetails(): ?array
+    {
+        if ($connection = FacebookConnection::query()->first()) {
+            return [
+                'pageId' => $connection->page_id,
+                'pageName' => $connection->page_name,
+                'managed' => true,
+            ];
+        }
+
+        if ($this->configured()) {
+            return [
+                'pageId' => (string) config('services.meta.page_id'),
+                'pageName' => 'Page Facebook',
+                'managed' => false,
+            ];
+        }
+
+        return null;
     }
 
     public function publish(MarketingContent $content): array
@@ -19,19 +42,20 @@ class FacebookPageService
         if (! $this->configured()) {
             throw new RuntimeException('La page Facebook BatixPro n’est pas configurée.');
         }
-        $request = Http::withToken(config('services.meta.page_access_token'))
+        $credentials = $this->credentials();
+        $request = Http::withToken($credentials['access_token'])
             ->acceptJson()
             ->timeout(60);
 
         if ($content->image_path && Storage::disk('public')->exists($content->image_path)) {
             $response = $request
                 ->attach('source', Storage::disk('public')->get($content->image_path), basename($content->image_path))
-                ->post($this->graphUrl('photos'), [
+                ->post($this->graphUrl($credentials['page_id'], 'photos'), [
                     'caption' => $this->captionFor($content),
                     'published' => 'true',
                 ]);
         } else {
-            $response = $request->post($this->graphUrl('feed'), [
+            $response = $request->post($this->graphUrl($credentials['page_id'], 'feed'), [
                 'message' => $this->captionFor($content),
                 'published' => 'true',
             ]);
@@ -44,14 +68,29 @@ class FacebookPageService
         return $response->json();
     }
 
-    private function graphUrl(string $endpoint): string
+    private function graphUrl(string $pageId, string $endpoint): string
     {
         return sprintf(
             'https://graph.facebook.com/%s/%s/%s',
-            config('services.meta.graph_version', 'v21.0'),
-            config('services.meta.page_id'),
+            config('services.meta.graph_version', 'v25.0'),
+            $pageId,
             $endpoint,
         );
+    }
+
+    private function credentials(): array
+    {
+        if ($connection = FacebookConnection::query()->first()) {
+            return [
+                'page_id' => $connection->page_id,
+                'access_token' => $connection->access_token,
+            ];
+        }
+
+        return [
+            'page_id' => (string) config('services.meta.page_id'),
+            'access_token' => (string) config('services.meta.page_access_token'),
+        ];
     }
 
     private function captionFor(MarketingContent $content): string

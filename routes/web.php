@@ -1,6 +1,7 @@
 <?php
 
 use App\Http\Controllers\AdminUserController;
+use App\Http\Controllers\FacebookConnectionController;
 use App\Http\Controllers\FacebookPostController;
 use App\Http\Controllers\GrowthController;
 use App\Http\Controllers\GrowthLoginController;
@@ -31,6 +32,10 @@ Route::middleware('growth.auth')->group(function () {
     Route::patch('/contents/{content}/status', [GrowthController::class, 'updateContentStatus'])->name('contents.status');
     Route::post('/facebook-posts', [FacebookPostController::class, 'store'])->name('facebook-posts.store');
     Route::post('/contents/{content}/facebook-publish', [FacebookPostController::class, 'publish'])->name('contents.facebook.publish');
+    Route::get('/facebook/connect', [FacebookConnectionController::class, 'redirect'])->name('facebook.connect');
+    Route::get('/facebook/callback', [FacebookConnectionController::class, 'callback'])->name('facebook.callback');
+    Route::post('/facebook/select-page', [FacebookConnectionController::class, 'select'])->name('facebook.select-page');
+    Route::delete('/facebook/connection', [FacebookConnectionController::class, 'destroy'])->name('facebook.disconnect');
     Route::post('/admins', [AdminUserController::class, 'store'])->name('admins.store');
     Route::patch('/admins/{admin}', [AdminUserController::class, 'update'])->name('admins.update');
     Route::post('/logout', [GrowthLoginController::class, 'destroy'])->name('growth.logout');

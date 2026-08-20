@@ -77,5 +77,7 @@ export type SharedProps = {
     aiConfigured?: boolean;
     whatsappConfigured?: boolean;
     facebookConfigured?: boolean;
+    facebookOAuthConfigured?: boolean;
+    facebookConnection?: { pageId: string; pageName: string; managed: boolean } | null;
     [key: string]: unknown;
 };
